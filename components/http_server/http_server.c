@@ -195,7 +195,7 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
     
     while (remaining > 0) {
         int to_read = remaining < 4096 ? remaining : 4096;
-        int received_bytes = httpd_req_recv(req, buf + received, to_read);
+        int received_bytes = httpd_req_recv(req, (char *)(buf + received), to_read);
         
         if (received_bytes <= 0) {
             free(buf);
