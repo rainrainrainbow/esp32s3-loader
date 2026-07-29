@@ -86,7 +86,7 @@ int file_manager_scan_roms(rom_file_t *roms, int max_count)
         rom->filename[MAX_FILENAME_LEN - 1] = '\0';
         
         // Get file size
-        char filepath[256];
+        char filepath[300];
         snprintf(filepath, sizeof(filepath), "%s/%s", ROM_DIR_PATH, entry->d_name);
         
         struct stat st;
@@ -104,8 +104,8 @@ int file_manager_scan_roms(rom_file_t *roms, int max_count)
             fclose(f);
         }
         
-        ESP_LOGI(TAG, "Found ROM: %s, size: %lu, valid: %d", 
-                 rom->filename, rom->size, rom->is_valid);
+        ESP_LOGI(TAG, "Found ROM: %s, size: %u, valid: %d", 
+                 rom->filename, (unsigned int)rom->size, rom->is_valid);
         count++;
     }
     
@@ -122,7 +122,7 @@ esp_err_t file_manager_upload_rom(const char *filename, const uint8_t *data, siz
     char filepath[256];
     snprintf(filepath, sizeof(filepath), "%s/%s", ROM_DIR_PATH, filename);
     
-    ESP_LOGI(TAG, "Uploading ROM: %s (%lu bytes)", filepath, size);
+    ESP_LOGI(TAG, "Uploading ROM: %s (%u bytes)", filepath, (unsigned int)size);
     
     FILE *f = fopen(filepath, "wb");
     if (!f) {
@@ -134,7 +134,7 @@ esp_err_t file_manager_upload_rom(const char *filename, const uint8_t *data, siz
     fclose(f);
     
     if (written != size) {
-        ESP_LOGE(TAG, "Write failed: wrote %lu of %lu", written, size);
+        ESP_LOGE(TAG, "Write failed: wrote %u of %u", (unsigned int)written, (unsigned int)size);
         remove(filepath);
         return ESP_FAIL;
     }
@@ -191,11 +191,11 @@ esp_err_t file_manager_load_rom(const char *filename, void (*progress_cb)(int))
         return ESP_FAIL;
     }
     
-    ESP_LOGI(TAG, "Writing to OTA partition at 0x%lx, size: %lu", 
-             ota_partition->address, ota_partition->size);
+    ESP_LOGI(TAG, "Writing to OTA partition at 0x%lx, size: %u", 
+             (unsigned long)ota_partition->address, (unsigned int)ota_partition->size);
     
     if (file_size > ota_partition->size) {
-        ESP_LOGE(TAG, "ROM too large: %lu > %lu", file_size, ota_partition->size);
+        ESP_LOGE(TAG, "ROM too large: %u > %u", (unsigned int)file_size, (unsigned int)ota_partition->size);
         fclose(f);
         return ESP_ERR_NO_MEM;
     }
