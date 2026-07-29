@@ -9,6 +9,7 @@
 #include "esp_lcd_touch_gt911.h"
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
+#include "driver/i2c.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -235,7 +236,7 @@ void touch_ui_show_main(void)
             lv_obj_center(label);
 
             // Add click animation
-            lv_obj_add_event_cb(btn, btn_press_event_cb, NULL);
+            lv_obj_add_event_cb(btn, btn_press_event_cb, LV_EVENT_ALL, NULL);
         }
 
         create_status_bar(screens[UI_SCREEN_MAIN]);
@@ -278,7 +279,7 @@ void touch_ui_show_rom_list(const char **rom_names, int rom_count, ui_rom_select
             lv_obj_set_style_text_color(btn, COLOR_ON_PRIMARY, 0);
             lv_obj_set_style_radius(btn, 5, 0);
             
-            lv_obj_add_event_cb(btn, rom_list_event_cb, NULL);
+            lv_obj_add_event_cb(btn, rom_list_event_cb, LV_EVENT_ALL, NULL);
         }
 
         create_status_bar(screens[UI_SCREEN_ROM_LIST]);
@@ -401,7 +402,7 @@ void touch_ui_show_flash_result(bool ok, const char *msg)
     lv_label_set_text(btn_label, "Back");
     lv_obj_center(btn_label);
 
-    lv_obj_add_event_cb(btn, back_btn_event_cb, NULL);
+    lv_obj_add_event_cb(btn, back_btn_event_cb, LV_EVENT_ALL, NULL);
 
     lv_screen_load(screen);
 }
@@ -595,7 +596,7 @@ esp_err_t touch_ui_init(void)
         .scl_io_num = TOUCH_SCL_GPIO,
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = TOUCH_I2C_CLK_HZ,
+        .clk_speed = TOUCH_I2C_CLK_HZ,
     };
     ESP_ERROR_CHECK(i2c_param_config(TOUCH_I2C_HOST, &i2c_cfg));
     ESP_ERROR_CHECK(i2c_driver_install(TOUCH_I2C_HOST, I2C_MODE_MASTER, 0, 0, 0));
