@@ -596,7 +596,7 @@ esp_err_t touch_ui_init(void)
         .scl_io_num = TOUCH_SCL_GPIO,
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .clk_speed = TOUCH_I2C_CLK_HZ,
+        .master = { .clk_speed = TOUCH_I2C_CLK_HZ },
     };
     ESP_ERROR_CHECK(i2c_param_config(TOUCH_I2C_HOST, &i2c_cfg));
     ESP_ERROR_CHECK(i2c_driver_install(TOUCH_I2C_HOST, I2C_MODE_MASTER, 0, 0, 0));
