@@ -10,18 +10,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v5.3.1
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
-      - name: Setup ESP-IDF
-        uses: espressif/esp-idf-ci-action@v1
-        with:
-          esp_idf_version: v5.3.1
-          target: esp32s3
-          path: '.'
 
       - name: Build firmware
         run: |
@@ -43,7 +38,7 @@ jobs:
       - name: Create merged binary
         run: |
           . ${IDF_PATH}/export.sh
-          idf.py merge-bin -o esp32s3-loader-merged.bin
+          python3 ${IDF_PATH}/tools/esptool_py/esptool.py --chip esp32s3 merge_bin -o esp32s3-loader-merged.bin @build/flash_args
 
       - name: Upload merged binary
         uses: actions/upload-artifact@v4
