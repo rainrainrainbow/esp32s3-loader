@@ -204,11 +204,11 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
         }
         
         if (!headers_skipped) {
-            // Find the end of headers (double newline)
-            for (int i = 0; i < received_bytes - 3; i++) {
-                if (buf[received + i] == '\r' && buf[received + i + 1] == '\n' && 
-                    buf[received + i + 2] == '\r' && buf[received + i + 3] == '\n') {
-                    data_start = received + i + 4;
+            // Search entire received buffer for \r\n\r\n boundary
+            for (int i = 0; i < received + received_bytes - 3; i++) {
+                if (buf[i] == '\r' && buf[i + 1] == '\n' && 
+                    buf[i + 2] == '\r' && buf[i + 3] == '\n') {
+                    data_start = i + 4;
                     headers_skipped = true;
                     break;
                 }

@@ -7,7 +7,6 @@
 #include "nvs_flash.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
-#include "lvgl.h"
 
 #include "wifi_manager.h"
 #include "file_manager.h"
@@ -20,8 +19,6 @@ static const char *TAG = "main";
 // Global state
 static rom_file_t s_roms[MAX_ROM_FILES];
 static int s_rom_count = 0;
-static bool s_wifi_connected = false;
-static char s_ip_address[16] = {0};
 
 // Backlight control
 static void backlight_init(void)
@@ -67,6 +64,48 @@ static void rom_selected_cb(int index)
         esp_restart();
     } else {
         touch_ui_show_flash_result(false, "Failed to load ROM");
+    }
+}
+
+// Main menu callback
+static void main_menu_cb(int menu_index)
+{
+    switch (menu_index) {
+        case 0: { // Load ROM
+            s_rom_count = file_manager_scan_roms(s_roms, MAX_ROM_FILES);
+            if (s_rom_count > 0) {
+                static const char *names[MAX_ROM_FILES];
+                for (int i = 0; i < s_rom_count; i++) {
+                    names[i] = s_roms[i].filename;
+                }
+                touch_ui_show_rom_list(names, s_rom_count, rom_selected_cb);
+            } else {
+                touch_ui_show_flash_result(false, "No ROM files found.\nUpload via Web UI.");
+            }
+            break;
+        }
+        case 1: { // WiFi Manager
+            char ip[16] = {0};
+            bool connected = wifi_manager_is_connected() && wifi_manager_get_ip_str(ip) == ESP_OK;
+            touch_ui_show_wifi(connected, connected ? ip : NULL, "ESP32-Loader");
+            break;
+        }
+        case 2: // File Browser
+            touch_ui_show_files();
+            break;
+        case 3: { // Settings
+            uint32_t total_kb = 0, used_kb = 0;
+            char msg[64];
+            if (file_manager_get_storage_info(&total_kb, &used_kb) == ESP_OK) {
+                snprintf(msg, sizeof(msg), "Storage: %lu/%lu KB\nFree: %lu KB",
+                         (unsigned long)used_kb, (unsigned long)total_kb,
+                         (unsigned long)(total_kb - used_kb));
+            } else {
+                snprintf(msg, sizeof(msg), "Storage: N/A");
+            }
+            touch_ui_show_flash_result(true, msg);
+            break;
+        }
     }
 }
 
@@ -129,6 +168,7 @@ void app_main(void)
     
     // Wait then show main menu
     vTaskDelay(pdMS_TO_TICKS(2000));
+    touch_ui_set_menu_callback(main_menu_cb);
     touch_ui_show_main();
     
     // Main loop

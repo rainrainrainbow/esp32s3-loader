@@ -35,11 +35,9 @@ static lv_obj_t *status_bar = NULL;
 static lv_obj_t *wifi_icon = NULL;
 static lv_obj_t *sd_icon = NULL;
 
-// Animation state
-static lv_anim_t splash_anim;
-
 // Callbacks
 static ui_rom_select_cb_t rom_select_cb = NULL;
+static ui_menu_cb_t s_menu_cb = NULL;
 
 // Color theme
 #define COLOR_PRIMARY    lv_color_hex(0x2196F3)  // Blue
@@ -75,12 +73,27 @@ static void rom_list_event_cb(lv_event_t *e)
     }
 }
 
-// Event callback for flash result back button
+// Event callback for main menu button (dispatches by index via s_menu_cb)
+static void menu_btn_event_cb(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_CLICKED) {
+        lv_obj_t *btn = lv_event_get_target(e);
+        int index = (int)(intptr_t)lv_obj_get_user_data(btn);
+        if (s_menu_cb) s_menu_cb(index);
+    }
+}
+
+void touch_ui_set_menu_callback(ui_menu_cb_t cb)
+{
+    s_menu_cb = cb;
+}
 static void back_btn_event_cb(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        lv_obj_del(lv_obj_get_parent(lv_event_get_target(e)));
+        lv_obj_t *parent = lv_obj_get_parent(lv_event_get_target(e));
+        lv_obj_del(parent);
         touch_ui_show_main();
     }
 }
@@ -235,8 +248,12 @@ void touch_ui_show_main(void)
             lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
             lv_obj_center(label);
 
-            // Add click animation
+            // Store button index in user data
+            lv_obj_set_user_data(btn, (void*)(intptr_t)i);
+
+            // Add click animation and navigation
             lv_obj_add_event_cb(btn, btn_press_event_cb, LV_EVENT_ALL, NULL);
+            lv_obj_add_event_cb(btn, menu_btn_event_cb, LV_EVENT_ALL, NULL);
         }
 
         create_status_bar(screens[UI_SCREEN_MAIN]);
@@ -251,39 +268,43 @@ void touch_ui_show_rom_list(const char **rom_names, int rom_count, ui_rom_select
 {
     rom_select_cb = cb;
 
-    if (screens[UI_SCREEN_ROM_LIST] == NULL) {
-        screens[UI_SCREEN_ROM_LIST] = lv_obj_create(lv_screen_active());
-        lv_obj_set_size(screens[UI_SCREEN_ROM_LIST], DISPLAY_WIDTH, DISPLAY_HEIGHT);
-        lv_obj_set_style_bg_color(screens[UI_SCREEN_ROM_LIST], COLOR_BG, 0);
-        lv_obj_set_style_border_width(screens[UI_SCREEN_ROM_LIST], 0, 0);
-
-        // Title
-        lv_obj_t *title = lv_label_create(screens[UI_SCREEN_ROM_LIST]);
-        lv_label_set_text(title, "Select ROM");
-        lv_obj_set_style_text_color(title, COLOR_PRIMARY, 0);
-        lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
-        lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 40);
-
-        // ROM list
-        lv_obj_t *list = lv_list_create(screens[UI_SCREEN_ROM_LIST]);
-        lv_obj_set_size(list, 280, DISPLAY_HEIGHT - 120);
-        lv_obj_align(list, LV_ALIGN_CENTER, 0, 20);
-        lv_obj_set_style_bg_color(list, COLOR_SURFACE, 0);
-        lv_obj_set_style_border_width(list, 0, 0);
-        lv_obj_set_style_radius(list, 10, 0);
-
-        for (int i = 0; i < rom_count; i++) {
-            lv_obj_t *btn = lv_list_add_btn(list, LV_SYMBOL_FILE, rom_names[i]);
-            lv_obj_set_style_bg_color(btn, COLOR_SURFACE, 0);
-            lv_obj_set_style_bg_color(btn, COLOR_ACCENT, LV_STATE_PRESSED);
-            lv_obj_set_style_text_color(btn, COLOR_ON_PRIMARY, 0);
-            lv_obj_set_style_radius(btn, 5, 0);
-            
-            lv_obj_add_event_cb(btn, rom_list_event_cb, LV_EVENT_ALL, NULL);
-        }
-
-        create_status_bar(screens[UI_SCREEN_ROM_LIST]);
+    // Delete and recreate if existing
+    if (screens[UI_SCREEN_ROM_LIST] != NULL) {
+        lv_obj_del(screens[UI_SCREEN_ROM_LIST]);
+        screens[UI_SCREEN_ROM_LIST] = NULL;
     }
+
+    screens[UI_SCREEN_ROM_LIST] = lv_obj_create(lv_screen_active());
+    lv_obj_set_size(screens[UI_SCREEN_ROM_LIST], DISPLAY_WIDTH, DISPLAY_HEIGHT);
+    lv_obj_set_style_bg_color(screens[UI_SCREEN_ROM_LIST], COLOR_BG, 0);
+    lv_obj_set_style_border_width(screens[UI_SCREEN_ROM_LIST], 0, 0);
+
+    // Title
+    lv_obj_t *title = lv_label_create(screens[UI_SCREEN_ROM_LIST]);
+    lv_label_set_text(title, "Select ROM");
+    lv_obj_set_style_text_color(title, COLOR_PRIMARY, 0);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 40);
+
+    // ROM list
+    lv_obj_t *list = lv_list_create(screens[UI_SCREEN_ROM_LIST]);
+    lv_obj_set_size(list, 280, DISPLAY_HEIGHT - 120);
+    lv_obj_align(list, LV_ALIGN_CENTER, 0, 20);
+    lv_obj_set_style_bg_color(list, COLOR_SURFACE, 0);
+    lv_obj_set_style_border_width(list, 0, 0);
+    lv_obj_set_style_radius(list, 10, 0);
+
+    for (int i = 0; i < rom_count; i++) {
+        lv_obj_t *btn = lv_list_add_btn(list, LV_SYMBOL_FILE, rom_names[i]);
+        lv_obj_set_style_bg_color(btn, COLOR_SURFACE, 0);
+        lv_obj_set_style_bg_color(btn, COLOR_ACCENT, LV_STATE_PRESSED);
+        lv_obj_set_style_text_color(btn, COLOR_ON_PRIMARY, 0);
+        lv_obj_set_style_radius(btn, 5, 0);
+        
+        lv_obj_add_event_cb(btn, rom_list_event_cb, LV_EVENT_ALL, NULL);
+    }
+
+    create_status_bar(screens[UI_SCREEN_ROM_LIST]);
 
     lv_screen_load(screens[UI_SCREEN_ROM_LIST]);
     current_screen = UI_SCREEN_ROM_LIST;
@@ -316,6 +337,7 @@ void touch_ui_update_flash_progress(int pct, const char *filename)
 
         // Progress bar
         lv_obj_t *bar = lv_bar_create(screens[UI_SCREEN_FLASHING]);
+        lv_obj_set_user_data(bar, (void*)"progressbar");
         lv_obj_set_size(bar, 260, 20);
         lv_obj_align(bar, LV_ALIGN_CENTER, 0, 0);
         lv_obj_set_style_bg_color(bar, COLOR_SURFACE, 0);
@@ -335,15 +357,20 @@ void touch_ui_update_flash_progress(int pct, const char *filename)
     // Update filename
     lv_obj_t *file_label = NULL;
     lv_obj_t *pct_label = NULL;
+    lv_obj_t *bar = NULL;
     
     uint32_t child_count = lv_obj_get_child_count(screens[UI_SCREEN_FLASHING]);
     for (uint32_t i = 0; i < child_count; i++) {
         lv_obj_t *child = lv_obj_get_child(screens[UI_SCREEN_FLASHING], i);
         const char *tag = (const char *)lv_obj_get_user_data(child);
-        if (tag && strcmp(tag, "filename") == 0) {
-            file_label = child;
-        } else if (tag && strcmp(tag, "percentage") == 0) {
-            pct_label = child;
+        if (tag) {
+            if (strcmp(tag, "filename") == 0) {
+                file_label = child;
+            } else if (strcmp(tag, "percentage") == 0) {
+                pct_label = child;
+            } else if (strcmp(tag, "progressbar") == 0) {
+                bar = child;
+            }
         }
     }
 
@@ -352,7 +379,6 @@ void touch_ui_update_flash_progress(int pct, const char *filename)
     }
 
     // Update progress bar
-    lv_obj_t *bar = lv_obj_get_child(screens[UI_SCREEN_FLASHING], 2);
     if (bar) {
         lv_bar_set_value(bar, pct, LV_ANIM_ON);
     }
@@ -417,20 +443,17 @@ void touch_ui_show_wifi(bool connected, const char *ip, const char *ssid)
         lv_obj_set_style_border_width(screens[UI_SCREEN_WIFI], 0, 0);
         lv_obj_clear_flag(screens[UI_SCREEN_WIFI], LV_OBJ_FLAG_SCROLLABLE);
 
-        // Title
-        lv_obj_t *title = lv_label_create(screens[UI_SCREEN_WIFI]);
-        lv_label_set_text(title, "WiFi Manager");
-        lv_obj_set_style_text_color(title, COLOR_PRIMARY, 0);
-        lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
-        lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 50);
-
         create_status_bar(screens[UI_SCREEN_WIFI]);
     }
 
-    // Clear previous content (except title and status bar)
-    lv_obj_clean(screens[UI_SCREEN_WIFI]);
+    // Remove all children EXCEPT the status bar (which is the first child)
+    // Status bar is at index 0, so remove all children starting from index 1
+    while (lv_obj_get_child_count(screens[UI_SCREEN_WIFI]) > 1) {
+        lv_obj_t *child = lv_obj_get_child(screens[UI_SCREEN_WIFI], 1);
+        lv_obj_del(child);
+    }
 
-    // Recreate title
+    // Title
     lv_obj_t *title = lv_label_create(screens[UI_SCREEN_WIFI]);
     lv_label_set_text(title, "WiFi Manager");
     lv_obj_set_style_text_color(title, COLOR_PRIMARY, 0);
@@ -470,7 +493,6 @@ void touch_ui_show_wifi(bool connected, const char *ip, const char *ssid)
         lv_obj_align(ssid_label, LV_ALIGN_CENTER, 0, connected ? 80 : 50);
     }
 
-    create_status_bar(screens[UI_SCREEN_WIFI]);
     lv_screen_load(screens[UI_SCREEN_WIFI]);
     current_screen = UI_SCREEN_WIFI;
 }
