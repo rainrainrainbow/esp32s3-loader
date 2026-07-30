@@ -38,7 +38,7 @@ jobs:
       - name: Create merged binary
         run: |
           . ${IDF_PATH}/export.sh
-          esptool.py --chip esp32s3 merge_bin -o esp32s3-loader-merged.bin @build/flash_args
+          cd build && esptool.py --chip esp32s3 merge_bin -o ../esp32s3-loader-merged.bin @flash_args && cd ..
 
       - name: Upload merged binary
         uses: actions/upload-artifact@v4
